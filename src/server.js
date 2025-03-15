@@ -13,7 +13,6 @@ import MainRoutes from './routes/index.js';
 
 const SERVER_PORT = 5000;
 
-
 export function start(app) {
   Connections();
 

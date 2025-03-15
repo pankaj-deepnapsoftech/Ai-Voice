@@ -1,16 +1,15 @@
 import bcrypt from 'bcrypt';
 import path from 'path';
-import {fileURLToPath} from "url";
+import { fileURLToPath } from 'url';
 // local imports
 import { UserModel } from '../model/User.model.js';
 import { AsyncHandler } from '../utils/AsyncHandler.js';
-import { BadRequestError, NotFoundError } from '../utils/customError.js';
+import { BadRequestError, NotFoundError, UnauthorizedError } from '../utils/customError.js';
 import { GenerateToken, verifyToken } from '../utils/Tokes.js';
 import { config } from '../config/env.config.js';
 import { sendMail } from '../utils/Sendmails.js';
 import { StatusCodes } from 'http-status-codes';
 import { logger } from '../utils/Logger.js';
-
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -49,6 +48,10 @@ export const LoginUser = AsyncHandler(async (req, res) => {
   const isCorrect = bcrypt.compareSync(password, user.password);
   if (!isCorrect) {
     throw new BadRequestError('Invalid Password', 'LoginUser method');
+  }
+
+  if (!user.email_verify) {
+    throw new UnauthorizedError('Email Not Verified', 'LoginUser Method');
   }
 
   const accesstoken = GenerateToken({ id: user._id, email: user.email });
@@ -107,57 +110,63 @@ export const ChangeUserPassword = AsyncHandler(async (req, res) => {
 });
 
 export const ForgetPassword = AsyncHandler(async (req, res) => {
-  const {email} = req.body;
+  const { email } = req.body;
 
-  const user = await UserModel.findOne({email});
-  if(!user){
-    throw new NotFoundError("User not found","ForgetPassword Method");
-  };
+  const user = await UserModel.findOne({ email });
+  if (!user) {
+    throw new NotFoundError('User not found', 'ForgetPassword Method');
+  }
 
-  const token = GenerateToken({email:user.email},"1m");
+  const token = GenerateToken({ email: user.email }, '10m');
 
   sendMail(
     'resetPassword.ejs',
     { resetLink: `http://localhost:5000/api/v1/user/reset-password-page?token=${token}`, userName: user.name },
-    { subject: 'Verify Your Email', email: user.email },
+    { subject: 'Reset Password Link', email: user.email },
   );
 
   return res.status(StatusCodes.OK).json({
-    message:"Reset Password Link Send In your mail"
+    message: 'Reset Password Link Send In your mail',
   });
 });
 
-export const ResetPasswordPage = AsyncHandler(async (req,res) => {
-  const {token} = req.query;
-  const {email} = verifyToken(token); 
+export const ResetPasswordPage = AsyncHandler(async (req, res) => {
+  const { token } = req.query;
+  const { email } = verifyToken(token);
 
-  if(!email){
-    const fileUrl = path.join(__dirname, "../../notfound.html");
-    return res.sendFile(fileUrl);
-  };
-
-  const user = await UserModel.findOne({email});
-  if(!user){
-    throw new NotFoundError("user not found","ResetPasswordPage method");
+  const user = await UserModel.findOne({ email });
+  if (!user) {
+    throw new NotFoundError('user not found', 'ResetPasswordPage method');
   }
 
-  const fileUrl =  path.join(__dirname,"../../index.html");
+  const fileUrl = path.join(__dirname, '../../index.html');
   return res.sendFile(fileUrl);
 });
 
-export const ResetUserPassword = AsyncHandler(async(req,res) => {
-  const {password} = req.body;
-  const {token} = req.query;
+export const ResetUserPassword = AsyncHandler(async (req, res) => {
+  const { password } = req.body;
+  const { token } = req.query;
   const { email } = verifyToken(token);
   const user = await UserModel.findOne({ email });
   logger.info(user);
   if (!user) {
-    throw new NotFoundError("user not found", "ResetPasswordPage method");
+    throw new NotFoundError('user not found', 'ResetPasswordPage method');
   }
 
-  await UserModel.findByIdAndUpdate(user._id,{password});
+  await UserModel.findByIdAndUpdate(user._id, { password });
   return res.status(StatusCodes.OK).json({
-    message:"Password Reset Successful",
-    redirectUrl:config.NODE_ENV !== "development" ? config.CLIENT_URL : config.LOCAL_CLIENT_URL
+    message: 'Password Reset Successful',
+    redirectUrl: config.NODE_ENV !== 'development' ? config.CLIENT_URL : config.LOCAL_CLIENT_URL,
+  });
+});
+
+export const getAllUser = AsyncHandler(async (req, res) => {
+  const { page, limit } = req.query;
+  const pages = parseInt(page) || 1;
+  const limits = parseInt(limit) || 10;
+  const skip = (pages - 1) * limits;
+  const data = await UserModel.find({}).select("-password -refresh_token").sort({ _id: -1 }).skip(skip).limit(limits);
+  return res.status(StatusCodes.OK).json({
+    data,
   });
 });
