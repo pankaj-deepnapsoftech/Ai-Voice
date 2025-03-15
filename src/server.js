@@ -3,6 +3,7 @@ import cors from 'cors';
 import http from 'http';
 import { StatusCodes } from 'http-status-codes';
 import cookieParser from 'cookie-parser';
+// import path from 'path';
 // local imports
 import { config } from './config/env.config.js';
 import { DbConnection } from './connection/DB.connection.js';
@@ -11,6 +12,7 @@ import { logger } from './utils/Logger.js';
 import MainRoutes from './routes/index.js';
 
 const SERVER_PORT = 5000;
+
 
 export function start(app) {
   Connections();

@@ -10,7 +10,6 @@ class Config {
     this.JWT_SECRET = process.env.JWT_SECRET;
     this.EMAIL_ID = process.env.EMAIL_ID;
     this.EMAIL_PASSWORD = process.env.EMAIL_PASSWORD;
-
   }
 }
 
