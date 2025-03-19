@@ -12,4 +12,4 @@ router.route("/delete-all-history").delete(Authentication,DeleteAllHistory);
 
 
 
-export default router
+export default router;
