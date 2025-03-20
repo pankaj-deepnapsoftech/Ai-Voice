@@ -48,6 +48,6 @@ export const DeleteAllHistory = AsyncHandler(async(req,res)=> {
     
   await HistoryModel.deleteMany({creater:req.currectUser?._id});
   return res.status(StatusCodes.OK).json({
-    message:"History deleted successful"
+    message:"History deleted successful" 
   });
 });
